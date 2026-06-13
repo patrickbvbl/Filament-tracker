@@ -24,7 +24,11 @@
   .add-btn { background:var(--navy); color:#fff; width:100%; font-size:16px; }
   .use-btn { background:var(--teal); color:#fff; }
   .del-btn { background:#dc3545; color:#fff; }
-  .filament h3 { margin:0 0 5px 0; color:var(--navy); }
+  .filament h3 { margin:0 0 5px 0; color:var(--navy); display:flex; align-items:center; gap:8px; }
+  .color-dot { display:inline-block; width:18px; height:18px; border-radius:50%; border:1px solid #ccc; flex-shrink:0; }
+  .color-picker { -webkit-appearance:none; appearance:none; width:60px; height:42px; padding:0; border:1px solid #ccc; border-radius:4px; flex:0; cursor:pointer; margin-top:4px; }
+  .color-picker::-webkit-color-swatch-wrapper { padding:0; }
+  .color-picker::-webkit-color-swatch { border:none; border-radius:4px; }
   .bar-bg { background:#ddd; border-radius:5px; height:15px; overflow:hidden; margin:8px 0; }
   .bar-fill { background:linear-gradient(90deg, var(--navy), var(--teal)); height:100%; }
   .row { display:flex; gap:8px; align-items:center; }
@@ -78,7 +82,25 @@
   <input id="brand" type="text" placeholder="f.eks. Sunlu">
 
   <label>Farve</label>
-  <input id="color" type="text" placeholder="f.eks. Sort">
+  <select id="color" onchange="toggleCustomColor()">
+    <option>Sort</option>
+    <option>Hvid</option>
+    <option>Grå</option>
+    <option>Rød</option>
+    <option>Blå</option>
+    <option>Grøn</option>
+    <option>Gul</option>
+    <option>Orange</option>
+    <option>Lilla</option>
+    <option>Pink</option>
+    <option>Brun</option>
+    <option>Transparent</option>
+    <option value="Andet">Andet (skriv selv)</option>
+  </select>
+  <div class="row" id="customColorRow" style="display:none; margin-top:6px;">
+    <input id="customColor" type="text" placeholder="Skriv farve">
+    <input id="customColorHex" type="color" value="#888888" class="color-picker">
+  </div>
 
   <label>Lagerplads</label>
   <select id="location"></select>
@@ -110,6 +132,21 @@
       localStorage.setItem('filaments', JSON.stringify(filaments));
       localStorage.setItem('locations', JSON.stringify(locations));
     } catch (e) {}
+  }
+
+  const colorMap = {
+    'sort':'#1a1a1a','hvid':'#f5f5f5','grå':'#9e9e9e','rød':'#d32f2f',
+    'blå':'#1976d2','grøn':'#388e3c','gul':'#fbc02d','orange':'#f57c00',
+    'lilla':'#7b1fa2','pink':'#e91e63','brun':'#6d4c2f','transparent':'#e0e0e0'
+  };
+
+  function colorToHex(name) {
+    return colorMap[(name || '').toLowerCase()] || '#888888';
+  }
+
+  function toggleCustomColor() {
+    const isOther = document.getElementById('color').value === 'Andet';
+    document.getElementById('customColorRow').style.display = isOther ? 'flex' : 'none';
   }
 
   function addLocation() {
@@ -147,7 +184,14 @@
     const type = document.getElementById('type').value;
     const brand = document.getElementById('brand').value || '-';
     const location = document.getElementById('location').value || 'Ikke valgt';
-    const color = document.getElementById('color').value || '-';
+    let color = document.getElementById('color').value;
+    let colorHex;
+    if (color === 'Andet') {
+      color = document.getElementById('customColor').value.trim() || '-';
+      colorHex = colorMap[color.toLowerCase()] || document.getElementById('customColorHex').value;
+    } else {
+      colorHex = colorToHex(color);
+    }
     const weight = parseFloat(document.getElementById('weight').value);
     const warn = document.getElementById('addWarn');
 
@@ -159,13 +203,15 @@
 
     filaments.push({
       id: Date.now(),
-      type, brand, color, location,
+      type, brand, color, colorHex, location,
       total: weight,
       remaining: weight
     });
 
     document.getElementById('brand').value = '';
-    document.getElementById('color').value = '';
+    document.getElementById('color').value = 'Sort';
+    document.getElementById('customColor').value = '';
+    document.getElementById('customColor').style.display = 'none';
     document.getElementById('weight').value = '';
 
     save();
@@ -205,7 +251,7 @@
     const percent = Math.max(0, Math.min(100, (f.remaining / f.total) * 100));
     return `
       <div class="filament">
-        <h3>${f.type} - ${f.brand || '-'} - ${f.color}</h3>
+        <h3><span class="color-dot" style="background:${f.colorHex || colorToHex(f.color)}"></span>${f.type} - ${f.brand || '-'} - ${f.color}</h3>
         <div>${f.remaining.toFixed(0)} g / ${f.total.toFixed(0)} g tilbage</div>
         <div class="bar-bg"><div class="bar-fill" style="width:${percent}%"></div></div>
         <div class="row">
