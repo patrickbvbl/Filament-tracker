@@ -81,9 +81,13 @@
   }
   .location-header .arrow { transition: transform 0.2s; }
   .location-header.open .arrow { transform: rotate(90deg); }
-  .location-body { display:none; padding:15px; }
-  .location-body.open {
+  .location-body {
     display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); gap:15px;
+    max-height:0; opacity:0; overflow:hidden; padding:0 15px;
+    transition: max-height 0.35s ease, opacity 0.3s ease, padding 0.35s ease;
+  }
+  .location-body.open {
+    max-height:3000px; opacity:1; padding:15px;
   }
   .ams-unit {
     margin:15px 0; background:#fff; border-radius:10px;
@@ -533,6 +537,26 @@
     });
   }
 
+  function animateStat(id, end, decimals = 0, suffix = '') {
+    const el = document.getElementById(id);
+    const start = parseFloat(el.dataset.val || '0') || 0;
+    if (Math.abs(start - end) < 0.001) {
+      el.textContent = end.toFixed(decimals) + suffix;
+      el.dataset.val = end;
+      return;
+    }
+    const duration = 500;
+    const startTime = performance.now();
+    function step(now) {
+      const progress = Math.min((now - startTime) / duration, 1);
+      const val = start + (end - start) * progress;
+      el.textContent = val.toFixed(decimals) + suffix;
+      if (progress < 1) requestAnimationFrame(step);
+      else el.dataset.val = end;
+    }
+    requestAnimationFrame(step);
+  }
+
   function renderStats() {
     const stats = document.getElementById('stats');
     const totalRolls = filaments.length;
@@ -540,24 +564,32 @@
     const lowCount = filaments.filter(f => (f.remaining / f.total) * 100 <= 15).length;
     const amsCount = amsUnits.length;
 
-    stats.innerHTML = `
-      <div class="stat-card">
-        <div class="stat-value">${totalRolls}</div>
-        <div class="stat-label">Ruller på lager</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-value">${(totalWeight / 1000).toFixed(1)} kg</div>
-        <div class="stat-label">Filament tilbage i alt</div>
-      </div>
-      <div class="stat-card${lowCount > 0 ? ' warn-card' : ''}">
-        <div class="stat-value">${lowCount}</div>
-        <div class="stat-label">Ruller snart tomme (&le;15%)</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-value">${amsCount}</div>
-        <div class="stat-label">AMS-enheder</div>
-      </div>
-    `;
+    if (!document.getElementById('stat-rolls')) {
+      stats.innerHTML = `
+        <div class="stat-card">
+          <div class="stat-value" id="stat-rolls">0</div>
+          <div class="stat-label">Ruller på lager</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="stat-weight">0.0 kg</div>
+          <div class="stat-label">Filament tilbage i alt</div>
+        </div>
+        <div class="stat-card" id="stat-low-card">
+          <div class="stat-value" id="stat-low">0</div>
+          <div class="stat-label">Ruller snart tomme (&le;15%)</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="stat-ams">0</div>
+          <div class="stat-label">AMS-enheder</div>
+        </div>
+      `;
+    }
+
+    document.getElementById('stat-low-card').classList.toggle('warn-card', lowCount > 0);
+    animateStat('stat-rolls', totalRolls);
+    animateStat('stat-weight', totalWeight / 1000, 1, ' kg');
+    animateStat('stat-low', lowCount);
+    animateStat('stat-ams', amsCount);
   }
 
   function render() {
@@ -597,18 +629,20 @@
       const div = document.createElement('div');
       div.className = 'location-group';
       div.innerHTML = `
-        <div class="location-header${isOpen ? ' open' : ''}" id="loc-header-${key}">
-          <span onclick="toggleLocationGroup('${key}')" style="flex:1; cursor:pointer;">${loc} (${groups[loc].length})</span>
-          <button class="del-btn" type="button" style="margin:0;" onclick="event.stopPropagation(); toggleDeleteConfirm('loc-${key}')">Slet</button>
-          <span class="arrow" onclick="toggleLocationGroup('${key}')">&#9656;</span>
-        </div>
-        <div class="del-confirm" id="del-loc-${key}" style="padding:10px;">
-          <span>Er du sikker på du vil slette ${loc}? Filamenter i lageret bliver ikke slettet, men sat til "Ikke valgt".</span>
-          <button class="yes-btn" type="button" onclick="deleteLocation('${key}')">Ja, slet</button>
-          <button class="no-btn" type="button" onclick="toggleDeleteConfirm('loc-${key}')">Annuller</button>
+        <div class="location-header${isOpen ? ' open' : ''}" id="loc-header-${key}" onclick="toggleLocationGroup('${key}')">
+          <span>${loc} (${groups[loc].length})</span>
+          <span class="arrow">&#9656;</span>
         </div>
         <div class="location-body${isOpen ? ' open' : ''}" id="loc-body-${key}">
           ${groups[loc].map(filamentHtml).join('')}
+          <div style="grid-column:1/-1;">
+            <button class="del-btn" type="button" onclick="toggleDeleteConfirm('loc-${key}')">Slet lagerplads</button>
+            <div class="del-confirm" id="del-loc-${key}" style="padding:10px;">
+              <span>Er du sikker på du vil slette ${loc}? Filamenter i lageret bliver ikke slettet, men sat til "Ikke valgt".</span>
+              <button class="yes-btn" type="button" onclick="deleteLocation('${key}')">Ja, slet</button>
+              <button class="no-btn" type="button" onclick="toggleDeleteConfirm('loc-${key}')">Annuller</button>
+            </div>
+          </div>
         </div>
       `;
       list.appendChild(div);
