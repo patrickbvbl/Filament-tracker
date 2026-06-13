@@ -398,9 +398,14 @@
       div.innerHTML = `
         <div class="ams-header">
           <span>${ams.name}</span>
-          <button class="del-btn" type="button" style="margin:0;" onclick="deleteAms(${ams.id})">Slet AMS</button>
+          <button class="del-btn" type="button" style="margin:0;" onclick="toggleDeleteConfirm('ams-${ams.id}')">Slet AMS</button>
         </div>
         <div class="ams-body">${slotsHtml}</div>
+        <div class="del-confirm" id="del-ams-${ams.id}" style="padding:10px;">
+          <span>Er du sikker på du vil slette ${ams.name}?</span>
+          <button class="yes-btn" type="button" onclick="deleteAms(${ams.id})">Ja, slet</button>
+          <button class="no-btn" type="button" onclick="toggleDeleteConfirm('ams-${ams.id}')">Annuller</button>
+        </div>
       `;
       amsList.appendChild(div);
     });
