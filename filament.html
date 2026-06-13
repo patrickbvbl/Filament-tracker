@@ -98,7 +98,11 @@
   </select>
 
   <label>Mærke</label>
-  <input id="brand" type="text" placeholder="f.eks. Sunlu">
+  <select id="brand"></select>
+  <div class="add-loc-row">
+    <input id="newBrand" type="text" placeholder="Nyt mærke, f.eks. Sunlu">
+    <button type="button" onclick="addBrand()">Opret</button>
+  </div>
 
   <label>Farve</label>
   <select id="color" onchange="toggleCustomColor()">
@@ -148,11 +152,13 @@
   let filaments = [];
   let locations = [];
   let amsUnits = [];
+  let brands = [];
 
   try {
     filaments = JSON.parse(localStorage.getItem('filaments') || '[]');
     locations = JSON.parse(localStorage.getItem('locations') || '[]');
     amsUnits = JSON.parse(localStorage.getItem('amsUnits') || '[]');
+    brands = JSON.parse(localStorage.getItem('brands') || '[]');
   } catch (e) {}
 
   function save() {
@@ -160,6 +166,7 @@
       localStorage.setItem('filaments', JSON.stringify(filaments));
       localStorage.setItem('locations', JSON.stringify(locations));
       localStorage.setItem('amsUnits', JSON.stringify(amsUnits));
+      localStorage.setItem('brands', JSON.stringify(brands));
     } catch (e) {}
   }
 
@@ -222,6 +229,37 @@
   function toggleCustomColor() {
     const isOther = document.getElementById('color').value === 'Andet';
     document.getElementById('customColorRow').style.display = isOther ? 'flex' : 'none';
+  }
+
+  function addBrand() {
+    const input = document.getElementById('newBrand');
+    const name = input.value.trim();
+    if (!name || brands.includes(name)) return;
+
+    brands.push(name);
+    input.value = '';
+    save();
+    renderBrands();
+  }
+
+  function renderBrands() {
+    const select = document.getElementById('brand');
+    const current = select.value;
+    select.innerHTML = '';
+
+    if (brands.length === 0) {
+      select.innerHTML = '<option value="">Ingen mærker oprettet</option>';
+      return;
+    }
+
+    brands.forEach(b => {
+      const opt = document.createElement('option');
+      opt.value = b;
+      opt.textContent = b;
+      select.appendChild(opt);
+    });
+
+    if (brands.includes(current)) select.value = current;
   }
 
   function addLocation() {
@@ -452,6 +490,7 @@
   }
 
   renderLocations();
+  renderBrands();
   render();
 </script>
 
