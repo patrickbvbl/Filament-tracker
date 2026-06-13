@@ -57,6 +57,24 @@
   .location-body { display:none; padding:10px; }
   .location-body.open { display:block; }
   .location-body .filament { margin:10px 0; border-top-color:var(--teal); }
+  .ams-unit {
+    max-width:500px; margin:15px auto; background:#fff; border-radius:8px;
+    box-shadow:0 2px 5px rgba(0,0,0,0.1); overflow:hidden; border-top:4px solid var(--navy);
+  }
+  .ams-header {
+    background:var(--navy); color:#fff; padding:12px 15px; font-weight:bold;
+    display:flex; justify-content:space-between; align-items:center;
+  }
+  .ams-body { padding:10px; display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .ams-slot {
+    border:1px dashed #bbb; border-radius:6px; padding:10px; min-height:60px;
+    display:flex; flex-direction:column; gap:6px; justify-content:center;
+  }
+  .ams-slot.filled { border:1px solid var(--teal); }
+  .ams-slot .slot-label { font-size:12px; color:#888; font-weight:bold; }
+  .ams-add-row { display:flex; gap:8px; max-width:500px; margin:15px auto; }
+  .ams-add-row input { flex:1; }
+  .ams-add-row button { background:var(--navy); color:#fff; white-space:nowrap; }
 </style>
 </head>
 <body>
@@ -116,22 +134,78 @@
   <div id="addWarn" class="warn"></div>
 </div>
 
+<div class="ams-add-row">
+  <input id="newAms" type="text" placeholder="Navn på ny AMS, f.eks. AMS 1">
+  <button type="button" onclick="addAms()">Opret AMS</button>
+</div>
+
+<div id="amsList"></div>
+
 <div id="list"></div>
 
 <script>
   let filaments = [];
   let locations = [];
+  let amsUnits = [];
 
   try {
     filaments = JSON.parse(localStorage.getItem('filaments') || '[]');
     locations = JSON.parse(localStorage.getItem('locations') || '[]');
+    amsUnits = JSON.parse(localStorage.getItem('amsUnits') || '[]');
   } catch (e) {}
 
   function save() {
     try {
       localStorage.setItem('filaments', JSON.stringify(filaments));
       localStorage.setItem('locations', JSON.stringify(locations));
+      localStorage.setItem('amsUnits', JSON.stringify(amsUnits));
     } catch (e) {}
+  }
+
+  function findAmsSlot(filamentId) {
+    for (const ams of amsUnits) {
+      const idx = ams.slots.indexOf(filamentId);
+      if (idx !== -1) return { ams, idx };
+    }
+    return null;
+  }
+
+  function addAms() {
+    const input = document.getElementById('newAms');
+    const name = input.value.trim();
+    if (!name) return;
+
+    amsUnits.push({ id: Date.now(), name, slots: [null, null, null, null] });
+    input.value = '';
+    save();
+    render();
+  }
+
+  function deleteAms(amsId) {
+    amsUnits = amsUnits.filter(a => a.id !== amsId);
+    save();
+    render();
+  }
+
+  function assignToAms(amsId, slotIdx, filamentId) {
+    if (!filamentId) return;
+    filamentId = Number(filamentId);
+
+    const existing = findAmsSlot(filamentId);
+    if (existing) existing.ams.slots[existing.idx] = null;
+
+    const ams = amsUnits.find(a => a.id === amsId);
+    ams.slots[slotIdx] = filamentId;
+
+    save();
+    render();
+  }
+
+  function removeFromAms(amsId, slotIdx) {
+    const ams = amsUnits.find(a => a.id === amsId);
+    ams.slots[slotIdx] = null;
+    save();
+    render();
   }
 
   const colorMap = {
@@ -276,17 +350,79 @@
     document.getElementById('loc-body-' + key).classList.toggle('open');
   }
 
+  function renderAms() {
+    const amsList = document.getElementById('amsList');
+    amsList.innerHTML = '';
+
+    const assignedIds = new Set();
+    amsUnits.forEach(ams => ams.slots.forEach(id => { if (id) assignedIds.add(id); }));
+
+    const available = filaments.filter(f => !assignedIds.has(f.id));
+
+    amsUnits.forEach(ams => {
+      const div = document.createElement('div');
+      div.className = 'ams-unit';
+
+      const slotsHtml = ams.slots.map((filamentId, idx) => {
+        if (filamentId) {
+          const f = filaments.find(x => x.id === filamentId);
+          if (!f) return `<div class="ams-slot"><div class="slot-label">Slot ${idx + 1}</div></div>`;
+          return `
+            <div class="ams-slot filled">
+              <div class="slot-label">Slot ${idx + 1}</div>
+              <div style="display:flex; align-items:center; gap:6px;">
+                <span class="color-dot" style="background:${f.colorHex || colorToHex(f.color)}"></span>
+                <span>${f.type} - ${f.brand || '-'} - ${f.color}</span>
+              </div>
+              <div>${f.remaining.toFixed(0)} g tilbage</div>
+              <button class="del-btn" type="button" onclick="removeFromAms(${ams.id}, ${idx})">Fjern (tilbage til ${f.location})</button>
+            </div>
+          `;
+        }
+
+        const options = available.map(f =>
+          `<option value="${f.id}">${f.type} - ${f.brand || '-'} - ${f.color} (${f.location})</option>`
+        ).join('');
+
+        return `
+          <div class="ams-slot">
+            <div class="slot-label">Slot ${idx + 1} - Tom</div>
+            <select onchange="assignToAms(${ams.id}, ${idx}, this.value)">
+              <option value="">Vælg filament...</option>
+              ${options}
+            </select>
+          </div>
+        `;
+      }).join('');
+
+      div.innerHTML = `
+        <div class="ams-header">
+          <span>${ams.name}</span>
+          <button class="del-btn" type="button" style="margin:0;" onclick="deleteAms(${ams.id})">Slet AMS</button>
+        </div>
+        <div class="ams-body">${slotsHtml}</div>
+      `;
+      amsList.appendChild(div);
+    });
+  }
+
   function render() {
+    renderAms();
+
     const list = document.getElementById('list');
     list.innerHTML = '';
 
-    if (filaments.length === 0) {
-      list.innerHTML = '<p class="empty">Ingen filamenter tilføjet endnu.</p>';
+    const assignedIds = new Set();
+    amsUnits.forEach(ams => ams.slots.forEach(id => { if (id) assignedIds.add(id); }));
+    const unassigned = filaments.filter(f => !assignedIds.has(f.id));
+
+    if (unassigned.length === 0) {
+      list.innerHTML = '<p class="empty">Ingen filamenter i lager.</p>';
       return;
     }
 
     const groups = {};
-    filaments.forEach(f => {
+    unassigned.forEach(f => {
       const loc = f.location || 'Ikke valgt';
       if (!groups[loc]) groups[loc] = [];
       groups[loc].push(f);
