@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Filament Tracker</title>
+<style>
+  :root {
+    --navy: #1b2a6b;
+    --teal: #0e7c7b;
+    --bg: #eef1f7;
+  }
+  body { font-family: Arial, sans-serif; background:var(--bg); margin:0; padding:20px; }
+  .logo-wrap { text-align:center; margin-bottom:10px; }
+  .logo-wrap img { height:80px; }
+  h1 { text-align:center; color:var(--navy); margin-top:0; }
+  .form-box, .filament {
+    background:#fff; border-radius:8px; padding:15px; margin:10px auto; max-width:500px;
+    box-shadow:0 2px 5px rgba(0,0,0,0.1); border-top:4px solid var(--teal);
+  }
+  label { display:block; margin-top:8px; font-weight:bold; color:var(--navy); }
+  input, select { width:100%; padding:8px; margin-top:4px; box-sizing:border-box; border:1px solid #ccc; border-radius:4px; }
+  button { margin-top:10px; padding:10px; border:none; border-radius:5px; cursor:pointer; }
+  .add-btn { background:var(--navy); color:#fff; width:100%; font-size:16px; }
+  .use-btn { background:var(--teal); color:#fff; }
+  .del-btn { background:#dc3545; color:#fff; }
+  .filament h3 { margin:0 0 5px 0; color:var(--navy); }
+  .bar-bg { background:#ddd; border-radius:5px; height:15px; overflow:hidden; margin:8px 0; }
+  .bar-fill { background:linear-gradient(90deg, var(--navy), var(--teal)); height:100%; }
+  .row { display:flex; gap:8px; align-items:center; }
+  .row input { flex:1; }
+  .empty { text-align:center; color:#999; }
+  .use-row { display:none; gap:8px; margin-top:8px; }
+  .use-row.active { display:flex; }
+  .warn { color:#dc3545; font-size:13px; margin-top:5px; }
+  .del-confirm { display:none; gap:8px; margin-top:8px; align-items:center; }
+  .del-confirm.active { display:flex; }
+  .del-confirm span { flex:1; color:#dc3545; font-size:14px; }
+  .yes-btn { background:#dc3545; color:#fff; }
+  .no-btn { background:#6c757d; color:#fff; }
+  .add-loc-row { display:flex; gap:8px; }
+  .add-loc-row button { background:var(--teal); color:#fff; white-space:nowrap; }
+  .location-group {
+    max-width:500px; margin:15px auto; background:#fff; border-radius:8px;
+    box-shadow:0 2px 5px rgba(0,0,0,0.1); overflow:hidden;
+  }
+  .location-header {
+    background:var(--navy); color:#fff; padding:12px 15px; font-weight:bold;
+    cursor:pointer; display:flex; justify-content:space-between; align-items:center;
+  }
+  .location-header .arrow { transition: transform 0.2s; }
+  .location-header.open .arrow { transform: rotate(90deg); }
+  .location-body { display:none; padding:10px; }
+  .location-body.open { display:block; }
+  .location-body .filament { margin:10px 0; border-top-color:var(--teal); }
+</style>
+</head>
+<body>
+
+<div class="logo-wrap">
+  <img src="Logo%20(1000x1000).png" alt="Martrick Lab" />
+</div>
+
+<h1>Filament Tracker</h1>
+
+<div class="form-box">
+  <label>Type</label>
+  <select id="type">
+    <option>PLA</option>
+    <option>PETG</option>
+    <option>ABS</option>
+    <option>TPU</option>
+    <option>ASA</option>
+    <option>Nylon</option>
+  </select>
+
+  <label>Mærke</label>
+  <input id="brand" type="text" placeholder="f.eks. Sunlu">
+
+  <label>Farve</label>
+  <input id="color" type="text" placeholder="f.eks. Sort">
+
+  <label>Lagerplads</label>
+  <select id="location"></select>
+  <div class="add-loc-row">
+    <input id="newLocation" type="text" placeholder="Ny lagerplads, f.eks. Reol A">
+    <button type="button" onclick="addLocation()">Opret</button>
+  </div>
+
+  <label>Størrelse på rulle (gram)</label>
+  <input id="weight" type="number" step="1" placeholder="f.eks. 1000">
+
+  <button class="add-btn" type="button" onclick="addFilament()">Tilføj filament</button>
+  <div id="addWarn" class="warn"></div>
+</div>
+
+<div id="list"></div>
+
+<script>
+  let filaments = [];
+  let locations = [];
+
+  try {
+    filaments = JSON.parse(localStorage.getItem('filaments') || '[]');
+    locations = JSON.parse(localStorage.getItem('locations') || '[]');
+  } catch (e) {}
+
+  function save() {
+    try {
+      localStorage.setItem('filaments', JSON.stringify(filaments));
+      localStorage.setItem('locations', JSON.stringify(locations));
+    } catch (e) {}
+  }
+
+  function addLocation() {
+    const input = document.getElementById('newLocation');
+    const name = input.value.trim();
+    if (!name || locations.includes(name)) return;
+
+    locations.push(name);
+    input.value = '';
+    save();
+    renderLocations();
+  }
+
+  function renderLocations() {
+    const select = document.getElementById('location');
+    const current = select.value;
+    select.innerHTML = '';
+
+    if (locations.length === 0) {
+      select.innerHTML = '<option value="">Ingen lagerpladser oprettet</option>';
+      return;
+    }
+
+    locations.forEach(loc => {
+      const opt = document.createElement('option');
+      opt.value = loc;
+      opt.textContent = loc;
+      select.appendChild(opt);
+    });
+
+    if (locations.includes(current)) select.value = current;
+  }
+
+  function addFilament() {
+    const type = document.getElementById('type').value;
+    const brand = document.getElementById('brand').value || '-';
+    const location = document.getElementById('location').value || 'Ikke valgt';
+    const color = document.getElementById('color').value || '-';
+    const weight = parseFloat(document.getElementById('weight').value);
+    const warn = document.getElementById('addWarn');
+
+    if (!weight || weight <= 0) {
+      warn.textContent = 'Indtast en gyldig størrelse for rullen.';
+      return;
+    }
+    warn.textContent = '';
+
+    filaments.push({
+      id: Date.now(),
+      type, brand, color, location,
+      total: weight,
+      remaining: weight
+    });
+
+    document.getElementById('brand').value = '';
+    document.getElementById('color').value = '';
+    document.getElementById('weight').value = '';
+
+    save();
+    render();
+  }
+
+  function toggleUseRow(id) {
+    const row = document.getElementById('use-' + id);
+    row.classList.toggle('active');
+  }
+
+  function confirmUse(id) {
+    const input = document.getElementById('use-input-' + id);
+    const used = parseFloat(input.value);
+    if (isNaN(used) || used <= 0) return;
+
+    const f = filaments.find(x => x.id === id);
+    f.remaining -= used;
+    if (f.remaining < 0) f.remaining = 0;
+
+    save();
+    render();
+  }
+
+  function toggleDeleteConfirm(id) {
+    const row = document.getElementById('del-' + id);
+    row.classList.toggle('active');
+  }
+
+  function deleteFilament(id) {
+    filaments = filaments.filter(x => x.id !== id);
+    save();
+    render();
+  }
+
+  function filamentHtml(f) {
+    const percent = Math.max(0, Math.min(100, (f.remaining / f.total) * 100));
+    return `
+      <div class="filament">
+        <h3>${f.type} - ${f.brand || '-'} - ${f.color}</h3>
+        <div>${f.remaining.toFixed(0)} g / ${f.total.toFixed(0)} g tilbage</div>
+        <div class="bar-bg"><div class="bar-fill" style="width:${percent}%"></div></div>
+        <div class="row">
+          <button class="use-btn" type="button" onclick="toggleUseRow(${f.id})">Brugt filament</button>
+          <button class="del-btn" type="button" onclick="toggleDeleteConfirm(${f.id})">Slet</button>
+        </div>
+        <div class="use-row" id="use-${f.id}">
+          <input type="number" step="1" id="use-input-${f.id}" placeholder="g brugt">
+          <button class="use-btn" type="button" onclick="confirmUse(${f.id})">OK</button>
+        </div>
+        <div class="del-confirm" id="del-${f.id}">
+          <span>Er du sikker på du vil slette denne rulle?</span>
+          <button class="yes-btn" type="button" onclick="deleteFilament(${f.id})">Ja, slet</button>
+          <button class="no-btn" type="button" onclick="toggleDeleteConfirm(${f.id})">Annuller</button>
+        </div>
+      </div>
+    `;
+  }
+
+  function toggleLocationGroup(key) {
+    document.getElementById('loc-header-' + key).classList.toggle('open');
+    document.getElementById('loc-body-' + key).classList.toggle('open');
+  }
+
+  function render() {
+    const list = document.getElementById('list');
+    list.innerHTML = '';
+
+    if (filaments.length === 0) {
+      list.innerHTML = '<p class="empty">Ingen filamenter tilføjet endnu.</p>';
+      return;
+    }
+
+    const groups = {};
+    filaments.forEach(f => {
+      const loc = f.location || 'Ikke valgt';
+      if (!groups[loc]) groups[loc] = [];
+      groups[loc].push(f);
+    });
+
+    Object.keys(groups).forEach((loc, i) => {
+      const key = 'g' + i;
+      const div = document.createElement('div');
+      div.className = 'location-group';
+      div.innerHTML = `
+        <div class="location-header" id="loc-header-${key}" onclick="toggleLocationGroup('${key}')">
+          <span>${loc} (${groups[loc].length})</span>
+          <span class="arrow">&#9656;</span>
+        </div>
+        <div class="location-body" id="loc-body-${key}">
+          ${groups[loc].map(filamentHtml).join('')}
+        </div>
+      `;
+      list.appendChild(div);
+    });
+  }
+
+  renderLocations();
+  render();
+</script>
+
+</body>
+</html>
