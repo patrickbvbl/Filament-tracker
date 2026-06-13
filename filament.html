@@ -39,10 +39,13 @@
   }
   .filament:hover { transform:translateY(-2px); box-shadow:0 4px 14px rgba(0,0,0,0.1); }
   label { display:block; margin-top:8px; font-weight:bold; color:var(--navy); }
-  input, select { width:100%; padding:8px; margin-top:4px; box-sizing:border-box; border:1px solid #ccc; border-radius:4px; }
-  button { margin-top:10px; padding:10px; border:none; border-radius:5px; cursor:pointer; }
+  input, select { width:100%; padding:8px; margin-top:4px; box-sizing:border-box; border:1px solid #ccc; border-radius:10px; }
+  button { margin-top:10px; padding:10px 16px; border:none; border-radius:24px; cursor:pointer; font-weight:600; transition:transform 0.1s, box-shadow 0.1s; }
+  button:hover { box-shadow:0 2px 8px rgba(0,0,0,0.15); transform:translateY(-1px); }
+  button:active { transform:translateY(0); }
   .add-btn { background:var(--navy); color:#fff; width:100%; font-size:16px; }
   .use-btn { background:var(--teal); color:#fff; }
+  .move-btn { background:var(--navy); color:#fff; }
   .del-btn { background:#dc3545; color:#fff; }
   .filament h3 { margin:0 0 5px 0; color:var(--navy); display:flex; align-items:center; gap:8px; }
   .color-dot { display:inline-block; width:18px; height:18px; border-radius:50%; border:1px solid #ccc; flex-shrink:0; }
@@ -103,6 +106,12 @@
   .section-title {
     color:var(--navy); font-size:20px; font-weight:800; margin:25px 0 5px;
     border-bottom:2px solid var(--teal); padding-bottom:6px;
+    display:flex; align-items:center; gap:10px;
+  }
+  .plus-btn {
+    width:28px; height:28px; border-radius:50%; background:var(--teal); color:#fff;
+    font-size:18px; font-weight:bold; line-height:1; padding:0; margin:0;
+    display:flex; align-items:center; justify-content:center; cursor:pointer; border:none;
   }
 </style>
 </head>
@@ -172,8 +181,11 @@
   <div id="addWarn" class="warn"></div>
 </div>
 
-<div class="section-title">AMS-enheder</div>
-<div class="ams-add-row">
+<div class="section-title">
+  AMS-enheder
+  <button class="plus-btn" type="button" onclick="toggleAmsForm()" title="Opret ny AMS">+</button>
+</div>
+<div class="ams-add-row" id="amsAddRow" style="display:none;">
   <input id="newAms" type="text" placeholder="Navn på ny AMS, f.eks. AMS 1">
   <button type="button" onclick="addAms()">Opret AMS</button>
 </div>
@@ -215,6 +227,11 @@
     return null;
   }
 
+  function toggleAmsForm() {
+    const row = document.getElementById('amsAddRow');
+    row.style.display = row.style.display === 'none' ? 'flex' : 'none';
+  }
+
   function addAms() {
     const input = document.getElementById('newAms');
     const name = input.value.trim();
@@ -222,6 +239,7 @@
 
     amsUnits.push({ id: Date.now(), name, slots: [null, null, null, null] });
     input.value = '';
+    document.getElementById('amsAddRow').style.display = 'none';
     save();
     render();
   }
@@ -308,6 +326,7 @@
     input.value = '';
     save();
     renderLocations();
+    render();
   }
 
   function renderLocations() {
@@ -361,7 +380,7 @@
     document.getElementById('brand').value = '';
     document.getElementById('color').value = 'Sort';
     document.getElementById('customColor').value = '';
-    document.getElementById('customColor').style.display = 'none';
+    document.getElementById('customColorRow').style.display = 'none';
     document.getElementById('weight').value = '';
 
     save();
@@ -371,6 +390,20 @@
   function toggleUseRow(id) {
     const row = document.getElementById('use-' + id);
     row.classList.toggle('active');
+  }
+
+  function toggleMoveRow(id) {
+    const row = document.getElementById('move-' + id);
+    row.classList.toggle('active');
+  }
+
+  function confirmMove(id) {
+    const select = document.getElementById('move-select-' + id);
+    const f = filaments.find(x => x.id === id);
+    f.location = select.value;
+
+    save();
+    render();
   }
 
   function confirmUse(id) {
@@ -407,11 +440,19 @@
         <div class="bar-bg"><div class="bar-fill ${barClass}" style="width:${percent}%"></div></div>
         <div class="row">
           <button class="use-btn" type="button" onclick="toggleUseRow(${f.id})">Brugt filament</button>
+          <button class="move-btn" type="button" onclick="toggleMoveRow(${f.id})">Flyt</button>
           <button class="del-btn" type="button" onclick="toggleDeleteConfirm(${f.id})">Slet</button>
         </div>
         <div class="use-row" id="use-${f.id}">
           <input type="number" step="1" id="use-input-${f.id}" placeholder="g brugt">
           <button class="use-btn" type="button" onclick="confirmUse(${f.id})">OK</button>
+        </div>
+        <div class="use-row" id="move-${f.id}">
+          <select id="move-select-${f.id}">
+            <option value="Ikke valgt">Ingen lagerplads</option>
+            ${locations.map(loc => `<option value="${loc}" ${loc === f.location ? 'selected' : ''}>${loc}</option>`).join('')}
+          </select>
+          <button class="move-btn" type="button" onclick="confirmMove(${f.id})">Flyt</button>
         </div>
         <div class="del-confirm" id="del-${f.id}">
           <span>Er du sikker på du vil slette denne rulle?</span>
@@ -422,7 +463,11 @@
     `;
   }
 
+  const openGroups = new Set();
+
   function toggleLocationGroup(key) {
+    if (openGroups.has(key)) openGroups.delete(key);
+    else openGroups.add(key);
     document.getElementById('loc-header-' + key).classList.toggle('open');
     document.getElementById('loc-body-' + key).classList.toggle('open');
   }
@@ -526,33 +571,56 @@
     amsUnits.forEach(ams => ams.slots.forEach(id => { if (id) assignedIds.add(id); }));
     const unassigned = filaments.filter(f => !assignedIds.has(f.id));
 
-    if (unassigned.length === 0) {
+    if (unassigned.length === 0 && locations.length === 0) {
       list.innerHTML = '<p class="empty">Ingen filamenter i lager.</p>';
       return;
     }
 
     const groups = {};
+    locations.forEach(loc => { groups[loc] = []; });
     unassigned.forEach(f => {
       const loc = f.location || 'Ikke valgt';
       if (!groups[loc]) groups[loc] = [];
       groups[loc].push(f);
     });
 
-    Object.keys(groups).forEach((loc, i) => {
-      const key = 'g' + i;
+    Object.keys(groups).forEach(loc => {
+      if (loc === 'Ikke valgt') {
+        if (groups[loc].length === 0) return;
+        const div = document.createElement('div');
+        div.innerHTML = groups[loc].map(filamentHtml).join('');
+        list.appendChild(div);
+        return;
+      }
+      const key = loc;
+      const isOpen = openGroups.has(key);
       const div = document.createElement('div');
       div.className = 'location-group';
       div.innerHTML = `
-        <div class="location-header" id="loc-header-${key}" onclick="toggleLocationGroup('${key}')">
-          <span>${loc} (${groups[loc].length})</span>
-          <span class="arrow">&#9656;</span>
+        <div class="location-header${isOpen ? ' open' : ''}" id="loc-header-${key}">
+          <span onclick="toggleLocationGroup('${key}')" style="flex:1; cursor:pointer;">${loc} (${groups[loc].length})</span>
+          <button class="del-btn" type="button" style="margin:0;" onclick="event.stopPropagation(); toggleDeleteConfirm('loc-${key}')">Slet</button>
+          <span class="arrow" onclick="toggleLocationGroup('${key}')">&#9656;</span>
         </div>
-        <div class="location-body" id="loc-body-${key}">
+        <div class="del-confirm" id="del-loc-${key}" style="padding:10px;">
+          <span>Er du sikker på du vil slette ${loc}? Filamenter i lageret bliver ikke slettet, men sat til "Ikke valgt".</span>
+          <button class="yes-btn" type="button" onclick="deleteLocation('${key}')">Ja, slet</button>
+          <button class="no-btn" type="button" onclick="toggleDeleteConfirm('loc-${key}')">Annuller</button>
+        </div>
+        <div class="location-body${isOpen ? ' open' : ''}" id="loc-body-${key}">
           ${groups[loc].map(filamentHtml).join('')}
         </div>
       `;
       list.appendChild(div);
     });
+  }
+
+  function deleteLocation(loc) {
+    locations = locations.filter(l => l !== loc);
+    filaments.forEach(f => { if (f.location === loc) f.location = 'Ikke valgt'; });
+    save();
+    renderLocations();
+    render();
   }
 
   renderLocations();
