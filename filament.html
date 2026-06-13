@@ -10,14 +10,34 @@
     --teal: #0e7c7b;
     --bg: #eef1f7;
   }
-  body { font-family: Arial, sans-serif; background:var(--bg); margin:0; padding:20px; }
+  * { box-sizing:border-box; }
+  body { font-family:'Segoe UI', Arial, sans-serif; background:var(--bg); margin:0; padding:20px; color:#222; }
+  .container { max-width:1100px; margin:0 auto; }
   .logo-wrap { text-align:center; margin-bottom:10px; }
   .logo-wrap img { height:80px; }
-  h1 { text-align:center; color:var(--navy); margin-top:0; }
-  .form-box, .filament {
-    background:#fff; border-radius:8px; padding:15px; margin:10px auto; max-width:500px;
-    box-shadow:0 2px 5px rgba(0,0,0,0.1); border-top:4px solid var(--teal);
+  h1 { text-align:center; color:var(--navy); margin-top:0; font-weight:800; letter-spacing:0.5px; }
+  .stats-bar {
+    display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:12px;
+    margin-bottom:20px;
   }
+  .stat-card {
+    background:#fff; border-radius:10px; padding:16px; text-align:center;
+    box-shadow:0 2px 8px rgba(0,0,0,0.06); border-bottom:3px solid var(--teal);
+  }
+  .stat-card .stat-value { font-size:28px; font-weight:800; color:var(--navy); }
+  .stat-card .stat-label { font-size:13px; color:#888; margin-top:4px; }
+  .stat-card.warn-card { border-bottom-color:#dc3545; }
+  .stat-card.warn-card .stat-value { color:#dc3545; }
+  .form-box {
+    background:#fff; border-radius:10px; padding:20px; margin:10px auto; max-width:500px;
+    box-shadow:0 2px 10px rgba(0,0,0,0.08); border-top:4px solid var(--teal);
+  }
+  .filament {
+    background:#fff; border-radius:10px; padding:15px;
+    box-shadow:0 2px 8px rgba(0,0,0,0.06); border-top:4px solid var(--teal);
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  .filament:hover { transform:translateY(-2px); box-shadow:0 4px 14px rgba(0,0,0,0.1); }
   label { display:block; margin-top:8px; font-weight:bold; color:var(--navy); }
   input, select { width:100%; padding:8px; margin-top:4px; box-sizing:border-box; border:1px solid #ccc; border-radius:4px; }
   button { margin-top:10px; padding:10px; border:none; border-radius:5px; cursor:pointer; }
@@ -29,8 +49,11 @@
   .color-picker { -webkit-appearance:none; appearance:none; width:60px; height:42px; padding:0; border:1px solid #ccc; border-radius:4px; flex:0; cursor:pointer; margin-top:4px; }
   .color-picker::-webkit-color-swatch-wrapper { padding:0; }
   .color-picker::-webkit-color-swatch { border:none; border-radius:4px; }
-  .bar-bg { background:#ddd; border-radius:5px; height:15px; overflow:hidden; margin:8px 0; }
-  .bar-fill { background:linear-gradient(90deg, var(--navy), var(--teal)); height:100%; }
+  .bar-bg { background:#e6e6e6; border-radius:5px; height:14px; overflow:hidden; margin:8px 0; }
+  .bar-fill { height:100%; transition:width 0.3s; }
+  .bar-fill.ok { background:linear-gradient(90deg, var(--navy), var(--teal)); }
+  .bar-fill.low { background:linear-gradient(90deg, #e0a800, #fbc02d); }
+  .bar-fill.critical { background:linear-gradient(90deg, #c0392b, #e74c3c); }
   .row { display:flex; gap:8px; align-items:center; }
   .row input { flex:1; }
   .empty { text-align:center; color:#999; }
@@ -45,36 +68,42 @@
   .add-loc-row { display:flex; gap:8px; }
   .add-loc-row button { background:var(--teal); color:#fff; white-space:nowrap; }
   .location-group {
-    max-width:500px; margin:15px auto; background:#fff; border-radius:8px;
-    box-shadow:0 2px 5px rgba(0,0,0,0.1); overflow:hidden;
+    margin:15px 0; background:#fff; border-radius:10px;
+    box-shadow:0 2px 8px rgba(0,0,0,0.06); overflow:hidden;
   }
   .location-header {
-    background:var(--navy); color:#fff; padding:12px 15px; font-weight:bold;
+    background:var(--navy); color:#fff; padding:14px 18px; font-weight:bold;
     cursor:pointer; display:flex; justify-content:space-between; align-items:center;
+    font-size:16px;
   }
   .location-header .arrow { transition: transform 0.2s; }
   .location-header.open .arrow { transform: rotate(90deg); }
-  .location-body { display:none; padding:10px; }
-  .location-body.open { display:block; }
-  .location-body .filament { margin:10px 0; border-top-color:var(--teal); }
+  .location-body { display:none; padding:15px; }
+  .location-body.open {
+    display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); gap:15px;
+  }
   .ams-unit {
-    max-width:500px; margin:15px auto; background:#fff; border-radius:8px;
-    box-shadow:0 2px 5px rgba(0,0,0,0.1); overflow:hidden; border-top:4px solid var(--navy);
+    margin:15px 0; background:#fff; border-radius:10px;
+    box-shadow:0 2px 8px rgba(0,0,0,0.06); overflow:hidden; border-top:4px solid var(--navy);
   }
   .ams-header {
-    background:var(--navy); color:#fff; padding:12px 15px; font-weight:bold;
-    display:flex; justify-content:space-between; align-items:center;
+    background:var(--navy); color:#fff; padding:14px 18px; font-weight:bold;
+    display:flex; justify-content:space-between; align-items:center; font-size:16px;
   }
-  .ams-body { padding:10px; display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .ams-body { padding:15px; display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:15px; }
   .ams-slot {
-    border:1px dashed #bbb; border-radius:6px; padding:10px; min-height:60px;
+    border:1px dashed #bbb; border-radius:8px; padding:12px; min-height:60px;
     display:flex; flex-direction:column; gap:6px; justify-content:center;
   }
-  .ams-slot.filled { border:1px solid var(--teal); }
-  .ams-slot .slot-label { font-size:12px; color:#888; font-weight:bold; }
+  .ams-slot.filled { border:1px solid var(--teal); background:#f6fcfb; }
+  .ams-slot .slot-label { font-size:12px; color:#888; font-weight:bold; text-transform:uppercase; letter-spacing:0.5px; }
   .ams-add-row { display:flex; gap:8px; max-width:500px; margin:15px auto; }
   .ams-add-row input { flex:1; }
   .ams-add-row button { background:var(--navy); color:#fff; white-space:nowrap; }
+  .section-title {
+    color:var(--navy); font-size:20px; font-weight:800; margin:25px 0 5px;
+    border-bottom:2px solid var(--teal); padding-bottom:6px;
+  }
 </style>
 </head>
 <body>
@@ -84,6 +113,10 @@
 </div>
 
 <h1>Filament Tracker</h1>
+
+<div class="container">
+
+<div id="stats" class="stats-bar"></div>
 
 <div class="form-box">
   <label>Type</label>
@@ -139,6 +172,7 @@
   <div id="addWarn" class="warn"></div>
 </div>
 
+<div class="section-title">AMS-enheder</div>
 <div class="ams-add-row">
   <input id="newAms" type="text" placeholder="Navn på ny AMS, f.eks. AMS 1">
   <button type="button" onclick="addAms()">Opret AMS</button>
@@ -146,7 +180,10 @@
 
 <div id="amsList"></div>
 
+<div class="section-title">Lager</div>
 <div id="list"></div>
+
+</div>
 
 <script>
   let filaments = [];
@@ -362,11 +399,12 @@
 
   function filamentHtml(f) {
     const percent = Math.max(0, Math.min(100, (f.remaining / f.total) * 100));
+    const barClass = percent <= 15 ? 'critical' : (percent <= 40 ? 'low' : 'ok');
     return `
       <div class="filament">
         <h3><span class="color-dot" style="background:${f.colorHex || colorToHex(f.color)}"></span>${f.type} - ${f.brand || '-'} - ${f.color}</h3>
         <div>${f.remaining.toFixed(0)} g / ${f.total.toFixed(0)} g tilbage</div>
-        <div class="bar-bg"><div class="bar-fill" style="width:${percent}%"></div></div>
+        <div class="bar-bg"><div class="bar-fill ${barClass}" style="width:${percent}%"></div></div>
         <div class="row">
           <button class="use-btn" type="button" onclick="toggleUseRow(${f.id})">Brugt filament</button>
           <button class="del-btn" type="button" onclick="toggleDeleteConfirm(${f.id})">Slet</button>
@@ -450,7 +488,35 @@
     });
   }
 
+  function renderStats() {
+    const stats = document.getElementById('stats');
+    const totalRolls = filaments.length;
+    const totalWeight = filaments.reduce((sum, f) => sum + f.remaining, 0);
+    const lowCount = filaments.filter(f => (f.remaining / f.total) * 100 <= 15).length;
+    const amsCount = amsUnits.length;
+
+    stats.innerHTML = `
+      <div class="stat-card">
+        <div class="stat-value">${totalRolls}</div>
+        <div class="stat-label">Ruller på lager</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">${(totalWeight / 1000).toFixed(1)} kg</div>
+        <div class="stat-label">Filament tilbage i alt</div>
+      </div>
+      <div class="stat-card${lowCount > 0 ? ' warn-card' : ''}">
+        <div class="stat-value">${lowCount}</div>
+        <div class="stat-label">Ruller snart tomme (&le;15%)</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">${amsCount}</div>
+        <div class="stat-label">AMS-enheder</div>
+      </div>
+    `;
+  }
+
   function render() {
+    renderStats();
     renderAms();
 
     const list = document.getElementById('list');
